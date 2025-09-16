@@ -1,0 +1,65 @@
+.App {
+  text-align: center;
+}
+
+/* Score Button Animations */
+.score-button {
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.score-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.score-button:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Clock Running Animation */
+.clock-running {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Enhanced scrollbar for play-by-play */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 10px;
+  border: 2px solid #f1f5f9;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mobile-stack {
+    flex-direction: column !important;
+  }
+
+  .mobile-full {
+    width: 100% !important;
+  }
+}

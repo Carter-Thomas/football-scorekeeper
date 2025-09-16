@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* Scorekeeper Button Styles */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-success {
+    @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none;
+  }
+
+  /* Score Display */
+  .score-display {
+    @apply text-6xl font-bold text-yellow-400 font-scoreboard tracking-wider drop-shadow-lg;
+  }
+
+  /* Team Name */
+  .team-name {
+    @apply text-3xl font-bold text-white font-display tracking-wide;
+  }
+
+  /* Game Clock */
+  .game-clock {
+    @apply text-4xl font-bold font-scoreboard tracking-widest;
+  }
+
+  /* Card Styles */
+  .card {
+    @apply bg-white rounded-lg shadow-md border border-gray-200 transition-shadow duration-200 hover:shadow-lg;
+  }
+
+  .card-body {
+    @apply p-6;
+  }
+
+  /* Input Styles */
+  .input-field {
+    @apply w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200 disabled:bg-gray-100 disabled:cursor-not-allowed;
+  }
+
+  /* Gamecast Background */
+  .gamecast-bg {
+    @apply min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-green-900 text-white;
+  }
+
+  /* Scoreboard Background */
+  .scoreboard-bg {
+    @apply bg-black bg-opacity-70 backdrop-blur-sm rounded-lg border border-gray-700;
+  }
+
+  /* Possession Indicator */
+  .possession-indicator {
+    @apply bg-yellow-600 px-4 py-2 rounded-full font-semibold text-black tracking-wide animate-pulse-slow;
+  }
+}
+
+@layer utilities {
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full hover:bg-gray-500;
+  }
+
+  /* Text Shadows */
+  .text-shadow {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.6);
+  }
+}

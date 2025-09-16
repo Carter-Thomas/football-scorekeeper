@@ -1,0 +1,33 @@
+{
+  "name": "football-scorekeeper",
+  "version": "1.0.0",
+  "description": "High School Football Scorekeeper with Real-time Updates",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "npm run build:client",
+    "build:client": "cd client && npm run build && cp -r build/* ../public/",
+    "install:all": "npm install && cd client && npm install",
+    "setup": "npm run install:all && npm run build"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "react-countdown": "^2.3.6",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "keywords": [
+    "football",
+    "scorekeeper",
+    "sports",
+    "real-time"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

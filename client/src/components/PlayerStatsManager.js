@@ -70,11 +70,12 @@ const PlayerStatsManager = ({
   const parsePlayForPlayers = (description, team, plays, time, playIndex) => {
     const teamKey = team === homeTeam ? 'home' : 'away';
     
-    // Parse rushing plays: "Player Name +X yard rush"
+    // Parse rushing plays: "Player Name +X yard rush" or "Player Name -X yard rush"
     const rushMatch = description.match(/^(.+?)\s*([+-]?\d+)\s*yard\s+rush/);
     if (rushMatch) {
       const playerName = rushMatch[1].trim();
-      const yards = parseInt(rushMatch[2]);
+      const yardsStr = rushMatch[2]; // Keep as string to preserve sign
+      const yards = parseInt(yardsStr); // This now properly handles negative signs
       const isTouchdown = description.includes('TOUCHDOWN');
       
       addPlayerPlay(plays, teamKey, playerName, {
@@ -89,11 +90,12 @@ const PlayerStatsManager = ({
       return;
     }
 
-    // Parse passing plays: "QB +X yard pass to Receiver"
+    // Parse passing plays: "QB +X yard pass to Receiver" or "QB -X yard pass to Receiver"
     const passMatch = description.match(/^(.+?)\s*([+-]?\d+)\s*yard\s+pass\s+to\s+(.+?)\s*\((complete|incomplete)\)/);
     if (passMatch) {
       const qbName = passMatch[1].trim();
-      const yards = parseInt(passMatch[2]);
+      const yardsStr = passMatch[2]; // Keep as string to preserve sign
+      const yards = parseInt(yardsStr); // This now properly handles negative signs
       const receiverName = passMatch[3].trim();
       const isComplete = passMatch[4] === 'complete';
       const isTouchdown = description.includes('TOUCHDOWN');

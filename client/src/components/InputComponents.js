@@ -1,18 +1,18 @@
-// components/InputComponents.js
-import React, { useState } from 'react';
+// components/InputComponents.js - Fixed to prevent focus loss
+import React, { useState, useRef, useEffect } from 'react';
 
 export const SimpleTextInput = ({ initialValue, onSave, placeholder, disabled, onFocusChange }) => {
-  const [value, setValue] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef();
 
   const handleSave = () => {
+    const value = inputRef.current.value;
     onSave(value);
     setIsEditing(false);
     onFocusChange(false);
   };
 
   const handleCancel = () => {
-    setValue(initialValue);
     setIsEditing(false);
     onFocusChange(false);
   };
@@ -22,9 +22,9 @@ export const SimpleTextInput = ({ initialValue, onSave, placeholder, disabled, o
       {isEditing ? (
         <div className="flex gap-2">
           <input
+            ref={inputRef}
             type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            defaultValue={initialValue}
             className="w-full p-2 border rounded"
             autoFocus
             onKeyDown={(e) => {
@@ -58,7 +58,7 @@ export const SimpleTextInput = ({ initialValue, onSave, placeholder, disabled, o
             disabled ? 'cursor-not-allowed text-gray-500' : ''
           }`}
         >
-          {value || placeholder}
+          {initialValue || placeholder}
         </div>
       )}
     </div>
@@ -66,17 +66,21 @@ export const SimpleTextInput = ({ initialValue, onSave, placeholder, disabled, o
 };
 
 export const SimpleNumberInput = ({ initialValue, onSave, disabled, onFocusChange }) => {
-  const [value, setValue] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef();
 
   const handleSave = () => {
-    onSave(Number(value));
+    const inputValue = inputRef.current.value;
+    // Parse as number but preserve negative values and handle empty/invalid input
+    const numericValue = inputValue === '' || inputValue === '-' ? 0 : Number(inputValue);
+    // Ensure we get a valid number (including negatives)
+    const finalValue = isNaN(numericValue) ? 0 : numericValue;
+    onSave(finalValue);
     setIsEditing(false);
     onFocusChange(false);
   };
 
   const handleCancel = () => {
-    setValue(initialValue);
     setIsEditing(false);
     onFocusChange(false);
   };
@@ -86,11 +90,12 @@ export const SimpleNumberInput = ({ initialValue, onSave, disabled, onFocusChang
       {isEditing ? (
         <div className="flex gap-2">
           <input
+            ref={inputRef}
             type="number"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            defaultValue={initialValue}
             className="w-full p-2 border rounded"
             autoFocus
+            step="1"
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleSave();
               if (e.key === 'Escape') handleCancel();
@@ -122,7 +127,7 @@ export const SimpleNumberInput = ({ initialValue, onSave, disabled, onFocusChang
             disabled ? 'cursor-not-allowed text-gray-500' : ''
           }`}
         >
-          {value}
+          {initialValue}
         </div>
       )}
     </div>
@@ -130,17 +135,17 @@ export const SimpleNumberInput = ({ initialValue, onSave, disabled, onFocusChang
 };
 
 export const SimpleTextarea = ({ initialValue, onSave, placeholder, disabled, onFocusChange }) => {
-  const [value, setValue] = useState(initialValue);
   const [isEditing, setIsEditing] = useState(false);
+  const textareaRef = useRef();
 
   const handleSave = () => {
+    const value = textareaRef.current.value;
     onSave(value);
     setIsEditing(false);
     onFocusChange(false);
   };
 
   const handleCancel = () => {
-    setValue(initialValue);
     setIsEditing(false);
     onFocusChange(false);
   };
@@ -150,8 +155,8 @@ export const SimpleTextarea = ({ initialValue, onSave, placeholder, disabled, on
       {isEditing ? (
         <div>
           <textarea
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            ref={textareaRef}
+            defaultValue={initialValue}
             className="w-full p-2 border rounded"
             rows="3"
             autoFocus
@@ -184,7 +189,7 @@ export const SimpleTextarea = ({ initialValue, onSave, placeholder, disabled, on
             disabled ? 'cursor-not-allowed text-gray-500' : ''
           }`}
         >
-          {value || placeholder}
+          {initialValue || placeholder}
         </div>
       )}
     </div>

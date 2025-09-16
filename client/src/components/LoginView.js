@@ -108,8 +108,6 @@ const LoginView = ({ api, setToken, setIsAuthenticated, setCurrentUser, setViewM
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <p className="text-sm text-gray-600 font-medium mb-2">Demo Credentials:</p>
           <div className="text-xs text-gray-500 space-y-1">
-            <div>Admin: <span className="font-mono">admin / football2024</span></div>
-            <div>Coach: <span className="font-mono">coach / score123</span></div>
           </div>
         </div>
       </div>

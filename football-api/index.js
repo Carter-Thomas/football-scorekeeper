@@ -1,10 +1,9 @@
-﻿// server.js - Migrated to Turso (serverless SQLite)
+// index.js - Clean Football Scorekeeper API
 const express = require('express');
 const { createClient } = require('@libsql/client');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -12,7 +11,10 @@ const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Turso database client
@@ -151,20 +153,68 @@ const authenticateToken = (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.sendStatus(401);
+    return res.status(401).json({ error: 'Access token required' });
   }
 
   jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.sendStatus(403);
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
     req.user = user;
     next();
   });
 };
 
+// Root route - API info
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Football Scorekeeper API',
+    version: '1.0.0',
+    status: 'healthy',
+    endpoints: {
+      auth: 'POST /api/login',
+      game: {
+        get: 'GET /api/game',
+        update: 'PUT /api/game/:id',
+        reset: 'POST /api/game/reset'
+      },
+      plays: {
+        get: 'GET /api/plays/:gameId',
+        create: 'POST /api/plays',
+        delete: 'DELETE /api/plays/:id'
+      },
+      users: {
+        get: 'GET /api/users',
+        create: 'POST /api/users'
+      },
+      debug: {
+        currentGame: 'GET /api/debug/game',
+        allGames: 'GET /api/debug/all-games'
+      }
+    },
+    database: process.env.TURSO_DATABASE_URL ? 'Connected' : 'Not configured',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Auth routes
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
     console.log('Login attempt for username:', username);
 
     const user = await getQuery('SELECT * FROM users WHERE username = ?', [username]);
@@ -197,7 +247,7 @@ app.post('/api/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -209,7 +259,7 @@ app.get('/api/game', async (req, res) => {
     res.json(game || {});
   } catch (error) {
     console.error('Database error fetching game:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to fetch game data' });
   }
 });
 
@@ -237,7 +287,6 @@ app.put('/api/game/:id', authenticateToken, async (req, res) => {
     });
     
     if (updateFields.length === 0) {
-      console.log('No valid fields to update');
       return res.status(400).json({ error: 'No valid fields to update' });
     }
     
@@ -245,22 +294,18 @@ app.put('/api/game/:id', authenticateToken, async (req, res) => {
     values.push(gameId);
     
     const query = `UPDATE games SET ${updateFields.join(', ')} WHERE id = ?`;
-    
-    console.log('Executing update query:', query);
-    console.log('With values:', values);
-    
     const result = await runQuery(query, values);
     
     console.log(`Database updated successfully. Changes: ${result.rowsAffected}`);
     
     if (result.rowsAffected === 0) {
-      console.warn('No rows were updated - game ID might not exist');
+      return res.status(404).json({ error: 'Game not found' });
     }
     
     res.json({ success: true, changes: result.rowsAffected });
   } catch (error) {
     console.error('Database update error:', error.message);
-    res.status(500).json({ error: 'Database error: ' + error.message });
+    res.status(500).json({ error: 'Failed to update game' });
   }
 });
 
@@ -272,15 +317,10 @@ app.post('/api/game/reset', authenticateToken, async (req, res) => {
     
     if (game) {
       console.log('Archiving current game ID:', game.id);
-      
-      // Archive current game
       await runQuery('UPDATE games SET game_status = "completed" WHERE id = ?', [game.id]);
-      
-      // Delete plays for current game
       await runQuery('DELETE FROM plays WHERE game_id = ?', [game.id]);
     }
     
-    // Create new game
     const result = await runQuery(`INSERT INTO games (home_team, away_team) VALUES (?, ?)`, 
       ['Home Team', 'Away Team']);
     
@@ -288,7 +328,7 @@ app.post('/api/game/reset', authenticateToken, async (req, res) => {
     res.json({ success: true, gameId: result.lastInsertRowid });
   } catch (error) {
     console.error('Error during game reset:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to reset game' });
   }
 });
 
@@ -304,13 +344,18 @@ app.get('/api/plays/:gameId', async (req, res) => {
     res.json(plays);
   } catch (error) {
     console.error('Database error fetching plays:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to fetch plays' });
   }
 });
 
 app.post('/api/plays', authenticateToken, async (req, res) => {
   try {
     const { game_id, play_text, team, quarter, game_time, possession } = req.body;
+
+    if (!game_id || !play_text) {
+      return res.status(400).json({ error: 'game_id and play_text are required' });
+    }
+
     console.log('Adding play to game', game_id, ':', play_text, 'Team:', team);
     
     const result = await runQuery(`INSERT INTO plays (game_id, play_text, team, quarter, game_time, possession) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -318,12 +363,11 @@ app.post('/api/plays', authenticateToken, async (req, res) => {
     
     console.log('Added play with ID:', result.lastInsertRowid);
     
-    // Return the created play
     const play = await getQuery('SELECT * FROM plays WHERE id = ?', [result.lastInsertRowid]);
     res.json(play);
   } catch (error) {
     console.error('Database error adding play:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to add play' });
   }
 });
 
@@ -332,57 +376,24 @@ app.delete('/api/plays/:id', authenticateToken, async (req, res) => {
     const playId = req.params.id;
     console.log('Deleting play with ID:', playId);
     
-    // First check if the play exists
     const play = await getQuery('SELECT * FROM plays WHERE id = ?', [playId]);
     
     if (!play) {
-      console.log('Play not found with ID:', playId);
       return res.status(404).json({ error: 'Play not found' });
     }
     
-    // Delete the play
     const result = await runQuery('DELETE FROM plays WHERE id = ?', [playId]);
     
     console.log(`Successfully deleted play ${playId}. Changes: ${result.rowsAffected}`);
     
-    if (result.rowsAffected === 0) {
-      console.warn('No rows were deleted - play might not exist');
-      return res.status(404).json({ error: 'Play not found' });
-    }
-    
     res.json({ 
       success: true, 
       message: 'Play deleted successfully',
-      deletedId: playId,
-      changes: result.rowsAffected 
+      deletedId: playId
     });
   } catch (error) {
     console.error('Database error deleting play:', error.message);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Debug route to check current game state
-app.get('/api/debug/game', async (req, res) => {
-  try {
-    const game = await getQuery('SELECT * FROM games WHERE game_status = "active" ORDER BY id DESC LIMIT 1');
-    res.json({
-      game: game,
-      timestamp: new Date().toISOString(),
-      serverTime: Date.now()
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// Debug route to check all games
-app.get('/api/debug/all-games', async (req, res) => {
-  try {
-    const games = await allQuery('SELECT * FROM games ORDER BY id DESC');
-    res.json(games);
-  } catch (error) {
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to delete play' });
   }
 });
 
@@ -397,7 +408,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('Database error fetching users:', error.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
 });
 
@@ -408,10 +419,14 @@ app.post('/api/users', authenticateToken, async (req, res) => {
     }
     
     const { username, password, role } = req.body;
+
+    if (!username || !password || !role) {
+      return res.status(400).json({ error: 'Username, password, and role are required' });
+    }
+
     console.log('Creating new user:', username, 'with role:', role);
     
     const hash = await bcrypt.hash(password, 10);
-    
     const result = await runQuery('INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
       [username, hash, role]);
     
@@ -419,45 +434,74 @@ app.post('/api/users', authenticateToken, async (req, res) => {
     res.json({ success: true, userId: result.lastInsertRowid });
   } catch (error) {
     if (error.message.includes('UNIQUE constraint failed')) {
-      console.log('Username already exists:', req.body.username);
       return res.status(400).json({ error: 'Username already exists' });
     }
     console.error('Database error creating user:', error.message);
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// Debug routes
+app.get('/api/debug/game', async (req, res) => {
+  try {
+    const game = await getQuery('SELECT * FROM games WHERE game_status = "active" ORDER BY id DESC LIMIT 1');
+    res.json({
+      game: game,
+      timestamp: new Date().toISOString(),
+      serverTime: Date.now()
+    });
+  } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }
 });
 
-// Serve static files from client build directory
-app.use(express.static(path.join(__dirname, 'client/build')));
-
-// Serve React app (for production) - only for non-API routes
-app.get('*', (req, res) => {
-  // Don't serve React app for API routes or static files
-  if (req.path.startsWith('/api/') || req.path.includes('.')) {
-    return res.status(404).json({ error: 'Not found' });
+app.get('/api/debug/all-games', async (req, res) => {
+  try {
+    const games = await allQuery('SELECT * FROM games ORDER BY id DESC');
+    res.json(games);
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
   }
-  res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    availableRoutes: [
+      'GET /',
+      'GET /health',
+      'POST /api/login',
+      'GET /api/game',
+      'PUT /api/game/:id',
+      'POST /api/game/reset',
+      'GET /api/plays/:gameId',
+      'POST /api/plays',
+      'DELETE /api/plays/:id',
+      'GET /api/users',
+      'POST /api/users'
+    ]
+  });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down gracefully...');
-  db.close();
-  process.exit(0);
-});
+// Export for Vercel
+module.exports = app;
 
-app.listen(PORT, () => {
-  console.log(`🏈 Football Scorekeeper running on port ${PORT}`);
-  console.log(`📊 Database: Turso (${process.env.TURSO_DATABASE_URL ? 'Connected' : 'Not configured'})`);
-  console.log(`🔑 Admin: admin/football2024`);
-  console.log(`👨‍💼 Coach: coach/score123`);
-  console.log(`🐛 Debug endpoints:`);
-  console.log(`   GET /api/debug/game - Current game state`);
-  console.log(`   GET /api/debug/all-games - All games`);
-});
+// Only listen if not in production (Vercel handles this)
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Football Scorekeeper API running on port ${PORT}`);
+    console.log(`Database: Turso (${process.env.TURSO_DATABASE_URL ? 'Connected' : 'Not configured'})`);
+    console.log(`Admin: admin/football2024`);
+    console.log(`Coach: coach/score123`);
+  });
+}

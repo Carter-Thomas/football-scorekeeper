@@ -428,8 +428,15 @@ app.post('/api/users', authenticateToken, async (req, res) => {
   }
 });
 
-// Serve React app (for production)
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve React app (for production) - only for non-API routes
 app.get('*', (req, res) => {
+  // Don't serve React app for API routes or static files
+  if (req.path.startsWith('/api/') || req.path.includes('.')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

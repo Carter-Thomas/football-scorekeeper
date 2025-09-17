@@ -48,6 +48,53 @@ const FootballScorekeeper = () => {
   const [isAnyInputFocused, setIsAnyInputFocused] = useState(false);
   const pollingIntervalRef = useRef(null);
 
+  // Kicker assignments and rosters state
+  const [assignedKickers, setAssignedKickers] = useState({
+    home: null,
+    away: null
+  });
+
+  const [rosters, setRosters] = useState({
+    home: [],
+    away: []
+  });
+
+  // Load rosters from localStorage on mount
+  useEffect(() => {
+    const savedRosters = localStorage.getItem('football-rosters');
+    if (savedRosters) {
+      try {
+        setRosters(JSON.parse(savedRosters));
+      } catch (error) {
+        console.error('Error loading rosters:', error);
+      }
+    }
+  }, []);
+
+  // Load kicker assignments from localStorage
+  useEffect(() => {
+    const savedKickers = localStorage.getItem('football-kickers');
+    if (savedKickers) {
+      try {
+        setAssignedKickers(JSON.parse(savedKickers));
+      } catch (error) {
+        console.error('Error loading kickers:', error);
+      }
+    }
+  }, []);
+
+  // Save kicker assignments to localStorage
+  const saveKickers = (newKickers) => {
+    setAssignedKickers(newKickers);
+    localStorage.setItem('football-kickers', JSON.stringify(newKickers));
+  };
+
+  // Save rosters to localStorage
+  const saveRosters = (newRosters) => {
+    setRosters(newRosters);
+    localStorage.setItem('football-rosters', JSON.stringify(newRosters));
+  };
+
   // API helper
   const api = axios.create({
     baseURL: API_URL,
@@ -461,6 +508,8 @@ const FootballScorekeeper = () => {
         timeouts={timeouts}
         currentPlay={currentPlay}
         playByPlay={playByPlay}
+        assignedKickers={assignedKickers}
+        rosters={rosters}
         setViewMode={setViewMode}
         resetGame={resetGame}
         handleLogout={handleLogout}
@@ -477,6 +526,8 @@ const FootballScorekeeper = () => {
         deletePlayByPlay={deletePlayByPlay}
         formatTime={formatTime}
         onInputFocusChange={handleInputFocusChange}
+        saveKickers={saveKickers}
+        saveRosters={saveRosters}
       />
     );
   }

@@ -17,16 +17,20 @@ const StatsManager = ({
   addCustomPlay,
   deletePlayByPlay,
   isConnected,
-  onInputFocusChange 
+  onInputFocusChange,
+  rosters,
+  assignedKickers,
+  saveRosters,
+  saveKickers
 }) => {
-  // Roster Management State
-  const [rosters, setRosters] = useState({
-    home: [],
-    away: []
-  });
+  // Modal state
   const [showRosterModal, setShowRosterModal] = useState(false);
   const [editingTeam, setEditingTeam] = useState('home');
   const [newPlayer, setNewPlayer] = useState({ number: '', name: '', position: '' });
+  
+  // Kicker Assignment State
+  const [showKickerModal, setShowKickerModal] = useState(false);
+  const [kickerEditingTeam, setKickerEditingTeam] = useState('home');
   
   // Enhanced Play-by-Play State
   const [playData, setPlayData] = useState({
@@ -40,23 +44,24 @@ const StatsManager = ({
     kickYardLine: '', // yard line on that team's side
     fieldDirection: 'home' // which direction is positive yardage
   });
-  
-  // Load rosters from localStorage on component mount
-  useEffect(() => {
-    const savedRosters = localStorage.getItem('football-rosters');
-    if (savedRosters) {
-      try {
-        setRosters(JSON.parse(savedRosters));
-      } catch (error) {
-        console.error('Error loading rosters:', error);
-      }
-    }
-  }, []);
 
-  // Save rosters to localStorage
-  const saveRosters = (newRosters) => {
-    setRosters(newRosters);
-    localStorage.setItem('football-rosters', JSON.stringify(newRosters));
+  // Assign kicker to team
+  const assignKicker = (team, playerId) => {
+    const newKickers = {
+      ...assignedKickers,
+      [team]: playerId
+    };
+    saveKickers(newKickers);
+    setShowKickerModal(false);
+  };
+
+  // Get kicker name for team
+  const getKickerName = (team) => {
+    const kickerId = assignedKickers[team];
+    if (!kickerId) return null;
+    
+    const kicker = rosters[team].find(p => p.id === kickerId);
+    return kicker ? `${kicker.name} #${kicker.number}` : null;
   };
 
   // Add player to roster
@@ -78,6 +83,12 @@ const StatsManager = ({
       [team]: rosters[team].filter(player => player.id !== playerId)
     };
     saveRosters(updatedRosters);
+    
+    // Remove from kicker assignment if they were assigned
+    if (assignedKickers[team] === playerId) {
+      const newKickers = { ...assignedKickers, [team]: null };
+      saveKickers(newKickers);
+    }
   };
 
   // CSV Import functionality
@@ -116,6 +127,26 @@ const StatsManager = ({
     event.target.value = ''; // Reset file input
   };
 
+  // Export roster functionality
+  const exportRoster = (team) => {
+    const teamRoster = rosters[team];
+    if (teamRoster.length === 0) {
+      alert(`No players in ${team === 'home' ? homeTeam : awayTeam} roster to export.`);
+      return;
+    }
+
+    const csvContent = 'Number,Name,Position\n' + 
+      teamRoster.map(player => `${player.number},${player.name},${player.position}`).join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${team === 'home' ? homeTeam : awayTeam}_roster.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   // Get player name by number and team
   const getPlayerName = (team, number) => {
     if (!number) return '';
@@ -133,7 +164,7 @@ const StatsManager = ({
     return rosters[possession] || [];
   };
 
-  // Get players by position with fallback
+  // Get players by position with fallback - UPDATED to include QB in rushing
   const getPlayersByPosition = (positions, includeOthers = false) => {
     const currentRoster = getCurrentRoster();
     const positionPlayers = currentRoster.filter(player => 
@@ -150,7 +181,7 @@ const StatsManager = ({
     return positionPlayers;
   };
 
-  // Calculate new down and distance based on yardage
+  // Calculate new down and distance based on yardage - FIXED
   const calculateNewSituation = (yards) => {
     // Apply directional logic: if field direction matches possession, add yards; otherwise subtract
     let adjustedYards = yards;
@@ -159,7 +190,7 @@ const StatsManager = ({
     }
     
     const newYardLine = yardLine + adjustedYards;
-    const yardsGained = Math.abs(yards); // Use absolute value for down/distance calculation
+    const yardsGained = yards; 
     
     // Check for first down
     if (yardsGained >= distance) {
@@ -212,7 +243,7 @@ const StatsManager = ({
     };
   };
 
-  // Process enhanced play
+  // Process enhanced play - UPDATED with kicker support
   const processPlay = () => {
     const startingPlay = isStartingPlay();
     
@@ -227,6 +258,7 @@ const StatsManager = ({
       // Handle kickoffs and punts with team-specific field positioning
       const kickingTeam = possession === 'home' ? homeTeam : awayTeam;
       const receivingTeam = playData.kickReceivingTeam === 'home' ? homeTeam : awayTeam;
+      const kickerName = getKickerName(possession);
       
       // Calculate actual field position from team-specific input
       const actualFieldPosition = playData.kickFieldSide === 'home' ? 
@@ -236,9 +268,13 @@ const StatsManager = ({
       const fieldSideTeam = playData.kickFieldSide === 'home' ? homeTeam : awayTeam;
       
       if (playData.playType === 'kickoff') {
-        playDescription = `Kickoff by ${kickingTeam} to ${fieldSideTeam} ${playData.kickYardLine}`;
+        playDescription = kickerName ? 
+          `Kickoff by ${kickerName} to ${fieldSideTeam} ${playData.kickYardLine}` :
+          `Kickoff by ${kickingTeam} to ${fieldSideTeam} ${playData.kickYardLine}`;
       } else {
-        playDescription = `Punt by ${kickingTeam} to ${fieldSideTeam} ${playData.kickYardLine}`;
+        playDescription = kickerName ? 
+          `Punt by ${kickerName} to ${fieldSideTeam} ${playData.kickYardLine}` :
+          `Punt by ${kickingTeam} to ${fieldSideTeam} ${playData.kickYardLine}`;
       }
       
       // Update possession to receiving team and set field position
@@ -332,7 +368,9 @@ const StatsManager = ({
       thrower: '', 
       ballCarrier: '', 
       kickReceivingTeam: 'home', 
-      fieldPosition: '' 
+      kickFieldSide: 'home',
+      kickYardLine: '',
+      fieldDirection: 'home'
     });
   };
 
@@ -351,13 +389,22 @@ const StatsManager = ({
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">Roster Management</h3>
-          <button
-            onClick={() => setShowRosterModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2"
-          >
-            <Users size={16} />
-            Manage Rosters
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowKickerModal(true)}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded flex items-center gap-2"
+            >
+              <span>⚽</span>
+              Assign Kickers
+            </button>
+            <button
+              onClick={() => setShowRosterModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded flex items-center gap-2"
+            >
+              <Users size={16} />
+              Manage Rosters
+            </button>
+          </div>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
@@ -372,6 +419,11 @@ const StatsManager = ({
               ))}
               {rosters.home.length > 5 && <div className="text-gray-500">...and {rosters.home.length - 5} more</div>}
             </div>
+            {getKickerName('home') && (
+              <div className="mt-2 p-2 bg-orange-100 rounded text-sm">
+                <span className="font-medium">Kicker:</span> {getKickerName('home')}
+              </div>
+            )}
           </div>
           
           <div>
@@ -385,6 +437,11 @@ const StatsManager = ({
               ))}
               {rosters.away.length > 5 && <div className="text-gray-500">...and {rosters.away.length - 5} more</div>}
             </div>
+            {getKickerName('away') && (
+              <div className="mt-2 p-2 bg-orange-100 rounded text-sm">
+                <span className="font-medium">Kicker:</span> {getKickerName('away')}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -438,7 +495,7 @@ const StatsManager = ({
           {!isStartingPlay() && (
             <div>
               <label className="block text-sm font-medium mb-1">
-                {playData.playType === 'pass' ? 'Receiver # (WR/RB/TE)' : 'Ball Carrier # (RB/WR)'}
+                {playData.playType === 'pass' ? 'Receiver # (WR/RB/TE)' : 'Ball Carrier # (QB/RB/WR)'}
               </label>
               <select
                 value={playData.ballCarrier}
@@ -476,6 +533,11 @@ const StatsManager = ({
                   </>
                 ) : (
                   <>
+                    {getPlayersByPosition(['QB']).map(player => (
+                      <option key={player.id} value={player.number}>
+                        #{player.number} {player.name} (QB)
+                      </option>
+                    ))}
                     {getPlayersByPosition(['RB', 'FB']).map(player => (
                       <option key={player.id} value={player.number}>
                         #{player.number} {player.name} ({player.position})
@@ -653,6 +715,122 @@ const StatsManager = ({
         rosters={rosters}
       />
 
+      {/* Kicker Assignment Modal */}
+      {showKickerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Assign Team Kickers</h2>
+              <button
+                onClick={() => setShowKickerModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            {/* Team Selection */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setKickerEditingTeam('home')}
+                className={`px-4 py-2 rounded ${kickerEditingTeam === 'home' ? 'bg-orange-600 text-white' : 'bg-gray-200'}`}
+              >
+                {homeTeam}
+              </button>
+              <button
+                onClick={() => setKickerEditingTeam('away')}
+                className={`px-4 py-2 rounded ${kickerEditingTeam === 'away' ? 'bg-orange-600 text-white' : 'bg-gray-200'}`}
+              >
+                {awayTeam}
+              </button>
+            </div>
+            
+            {/* Current Kicker Display */}
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <h3 className="font-medium mb-2">Current {kickerEditingTeam === 'home' ? homeTeam : awayTeam} Kicker:</h3>
+              <div className="text-lg">
+                {getKickerName(kickerEditingTeam) || 'No kicker assigned'}
+              </div>
+            </div>
+            
+            {/* Available Players */}
+            <div className="border rounded max-h-64 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left p-2">Number</th>
+                    <th className="text-left p-2">Name</th>
+                    <th className="text-left p-2">Position</th>
+                    <th className="text-left p-2">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Show Kickers first */}
+                  {rosters[kickerEditingTeam].filter(player => 
+                    player.position?.toLowerCase() === 'k'
+                  ).map((player) => (
+                    <tr key={player.id} className="border-t bg-orange-50">
+                      <td className="p-2">#{player.number}</td>
+                      <td className="p-2">{player.name}</td>
+                      <td className="p-2">{player.position}</td>
+                      <td className="p-2">
+                        <button
+                          onClick={() => assignKicker(kickerEditingTeam, player.id)}
+                          className={`px-3 py-1 rounded text-sm ${
+                            assignedKickers[kickerEditingTeam] === player.id 
+                              ? 'bg-green-600 text-white' 
+                              : 'bg-orange-600 hover:bg-orange-700 text-white'
+                          }`}
+                        >
+                          {assignedKickers[kickerEditingTeam] === player.id ? 'Current' : 'Assign'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Show other players */}
+                  {rosters[kickerEditingTeam].filter(player => 
+                    player.position?.toLowerCase() !== 'k'
+                  ).map((player) => (
+                    <tr key={player.id} className="border-t">
+                      <td className="p-2">#{player.number}</td>
+                      <td className="p-2">{player.name}</td>
+                      <td className="p-2">{player.position}</td>
+                      <td className="p-2">
+                        <button
+                          onClick={() => assignKicker(kickerEditingTeam, player.id)}
+                          className={`px-3 py-1 rounded text-sm ${
+                            assignedKickers[kickerEditingTeam] === player.id 
+                              ? 'bg-green-600 text-white' 
+                              : 'bg-gray-600 hover:bg-gray-700 text-white'
+                          }`}
+                        >
+                          {assignedKickers[kickerEditingTeam] === player.id ? 'Current' : 'Assign'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rosters[kickerEditingTeam].length === 0 && (
+                <div className="text-gray-500 text-center py-4">No players available. Add players to the roster first.</div>
+              )}
+            </div>
+            
+            {/* Clear Kicker Assignment */}
+            {assignedKickers[kickerEditingTeam] && (
+              <div className="mt-4">
+                <button
+                  onClick={() => assignKicker(kickerEditingTeam, null)}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+                >
+                  Clear Kicker Assignment
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Roster Management Modal */}
       {showRosterModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -701,7 +879,7 @@ const StatsManager = ({
               />
               <input
                 type="text"
-                placeholder="Position"
+                placeholder="Position (QB, RB, WR, K, etc.)"
                 value={newPlayer.position}
                 onChange={(e) => setNewPlayer({...newPlayer, position: e.target.value})}
                 className="p-2 border rounded"

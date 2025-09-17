@@ -113,7 +113,7 @@ const initializeDatabase = async () => {
 
     // Create default users if they don't exist
     const defaultUsers = [
-      { username: 'admin', password: 'football2024', role: 'admin' },
+      { username: 'admin', password: 'phsfootball2025', role: 'admin' },
       { username: 'coach', password: 'score123', role: 'scorekeeper' }
     ];
 
@@ -455,7 +455,7 @@ process.on('SIGINT', () => {
 app.listen(PORT, () => {
   console.log(`🏈 Football Scorekeeper running on port ${PORT}`);
   console.log(`📊 Database: Turso (${process.env.TURSO_DATABASE_URL ? 'Connected' : 'Not configured'})`);
-  console.log(`🔑 Admin: admin/football2024`);
+  console.log(`🔑 Admin: admin/phsfootball2025`);
   console.log(`👨‍💼 Coach: coach/score123`);
   console.log(`🐛 Debug endpoints:`);
   console.log(`   GET /api/debug/game - Current game state`);

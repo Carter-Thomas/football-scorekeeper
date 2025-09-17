@@ -22,6 +22,8 @@ const ScorekeeperView = ({
   timeouts,
   currentPlay,
   playByPlay,
+  assignedKickers,
+  rosters,
   setViewMode,
   resetGame,
   handleLogout,
@@ -37,7 +39,9 @@ const ScorekeeperView = ({
   addCustomPlay,
   deletePlayByPlay,
   formatTime,
-  onInputFocusChange
+  onInputFocusChange,
+  saveKickers,
+  saveRosters
 }) => {
   const [minutes, setMinutes] = useState(Math.floor(timeLeft / 60));
   const [seconds, setSeconds] = useState(timeLeft % 60);
@@ -96,6 +100,15 @@ const ScorekeeperView = ({
     });
   };
 
+  // Get kicker name for team from props
+  const getKickerName = (team) => {
+    if (!assignedKickers || !assignedKickers[team] || !rosters) return null;
+    
+    const kickerId = assignedKickers[team];
+    const kicker = rosters[team].find(p => p.id === kickerId);
+    return kicker ? kicker.name : null;
+  };
+
   // Enhanced scoring functions
   const [fieldDirection, setFieldDirection] = useState('home'); // Track field direction for kicking
 
@@ -107,6 +120,7 @@ const ScorekeeperView = ({
     });
   };
 
+  // Include kicker name in field goals
   const handleFieldGoal = (team, made = true) => {
     // Calculate distance based on field direction
     let distance;
@@ -118,10 +132,14 @@ const ScorekeeperView = ({
       distance = yardLine + 17;
     }
     
+    const teamName = team === 'home' ? homeTeam : awayTeam;
+    const kickerName = getKickerName(team);
+    const kickerText = kickerName ? `${kickerName} ` : '';
+    
     if (made) {
-      addScore(team, 3, `${distance} yard field goal - ${team === 'home' ? homeTeam : awayTeam}`);
+      addScore(team, 3, `${distance} Yard Field Goal - ${kickerText}: ${teamName}`);
     } else {
-      addCustomPlay(`${distance} yard field goal MISSED - ${team === 'home' ? homeTeam : awayTeam}`, team === 'home' ? homeTeam : awayTeam);
+      addCustomPlay(`${distance} Yard Field Goal MISSED - ${kickerText}: ${teamName}` , teamName);
     }
   };
 
@@ -133,10 +151,16 @@ const ScorekeeperView = ({
     addScore(team, 2, `2-POINT CONVERSION - ${team === 'home' ? homeTeam : awayTeam}`);
   };
 
-  // Placeholder delete function - you'll need to implement this in your actual parent component
+  // Handle extra points with kicker name
+  const handleExtraPoint = (team) => {
+    const teamName = team === 'home' ? homeTeam : awayTeam;
+    const kickerName = getKickerName(team);
+    const kickerText = kickerName ? `${kickerName} ` : '';
+    addScore(team, 1, `Extra Point - ${kickerText}: ${teamName}`);
+  };
+
+  // Placeholder delete function
   const handleDeletePlay = (playIndex) => {
-    // This is a placeholder - replace with actual implementation
-    // that removes the play from your playByPlay state/backend
     console.log(`Delete play at index ${playIndex}`);
     alert(`Delete functionality needs to be implemented in your parent component. Play index: ${playIndex}`);
   };
@@ -243,6 +267,16 @@ const ScorekeeperView = ({
                 </select>
                 <div className="text-xs text-gray-500 mt-1">
                   Current FG distance: {fieldDirection === 'home' ? (100 - yardLine) + 17 : yardLine + 17} yards
+                  {getKickerName('away') && (
+                    <div className="mt-1">
+                      {awayTeam} Kicker: {getKickerName('away')}
+                    </div>
+                  )}
+                  {getKickerName('home') && (
+                    <div className="mt-1">
+                      {homeTeam} Kicker: {getKickerName('home')}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -320,7 +354,7 @@ const ScorekeeperView = ({
                     </button>
                   </div>
                   <button 
-                    onClick={() => addScore('away', 1)} 
+                    onClick={() => handleExtraPoint('away')} 
                     className="bg-yellow-600 text-white p-2 rounded text-sm disabled:bg-gray-400"
                     disabled={!isConnected}
                   >
@@ -403,7 +437,7 @@ const ScorekeeperView = ({
                     </button>
                   </div>
                   <button 
-                    onClick={() => addScore('home', 1)} 
+                    onClick={() => handleExtraPoint('home')} 
                     className="bg-yellow-600 text-white p-2 rounded text-sm disabled:bg-gray-400"
                     disabled={!isConnected}
                   >
@@ -689,6 +723,10 @@ const ScorekeeperView = ({
             deletePlayByPlay={deletePlayByPlay || handleDeletePlay}
             isConnected={isConnected}
             onInputFocusChange={onInputFocusChange}
+            rosters={rosters}
+            assignedKickers={assignedKickers}
+            saveRosters={saveRosters}
+            saveKickers={saveKickers}
           />
         </div>
       </div>

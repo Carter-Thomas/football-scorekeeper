@@ -150,11 +150,11 @@ const StatsManager = ({
     window.URL.revokeObjectURL(url);
   };
 
-  // Get player name by number and team
-  const getPlayerName = (team, number) => {
-    if (!number) return '';
-    const player = rosters[team].find(p => p.number === number.toString());
-    return player ? player.name : `#${number}`;
+  // Get player name by ID and team
+  const getPlayerName = (team, playerId) => {
+    if (!playerId) return '';
+    const player = rosters[team].find(p => p.id === playerId.toString());
+    return player ? player.name : `#${playerId}`;
   };
 
   // Check if current play type is a starting play
@@ -545,13 +545,13 @@ const StatsManager = ({
               >
                 <option value="">Select QB</option>
                 {getPlayersByPosition(['QB']).map(player => (
-                  <option key={player.id} value={player.number}>
+                  <option key={player.id} value={player.id}>
                     #{player.number} {player.name} ({player.position})
                   </option>
                 ))}
                 <optgroup label="Other Players">
                   {getPlayersByPosition(['WR', 'RB', 'TE', 'FB']).map(player => (
-                    <option key={player.id} value={player.number}>
+                    <option key={player.id} value={player.id}>
                       #{player.number} {player.name} ({player.position})
                     </option>
                   ))}
@@ -575,17 +575,17 @@ const StatsManager = ({
                 {playData.playType === 'pass' ? (
                   <>
                     {getPlayersByPosition(['WR']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} (WR)
                       </option>
                     ))}
                     {getPlayersByPosition(['RB', 'FB']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} ({player.position})
                       </option>
                     ))}
                     {getPlayersByPosition(['TE']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} (TE)
                       </option>
                     ))}
@@ -593,7 +593,7 @@ const StatsManager = ({
                       {getCurrentRoster().filter(player => 
                         !['WR', 'RB', 'FB', 'TE', 'QB'].includes(player.position?.toUpperCase())
                       ).map(player => (
-                        <option key={player.id} value={player.number}>
+                        <option key={player.id} value={player.id}>
                           #{player.number} {player.name} ({player.position})
                         </option>
                       ))}
@@ -602,17 +602,17 @@ const StatsManager = ({
                 ) : (
                   <>
                     {getPlayersByPosition(['QB']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} (QB)
                       </option>
                     ))}
                     {getPlayersByPosition(['RB', 'FB']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} ({player.position})
                       </option>
                     ))}
                     {getPlayersByPosition(['WR']).map(player => (
-                      <option key={player.id} value={player.number}>
+                      <option key={player.id} value={player.id}>
                         #{player.number} {player.name} (WR)
                       </option>
                     ))}
@@ -620,7 +620,7 @@ const StatsManager = ({
                       {getCurrentRoster().filter(player => 
                         !['WR', 'RB', 'FB', 'QB'].includes(player.position?.toUpperCase())
                       ).map(player => (
-                        <option key={player.id} value={player.number}>
+                        <option key={player.id} value={player.id}>
                           #{player.number} {player.name} ({player.position})
                         </option>
                       ))}

@@ -100,6 +100,36 @@ const ScorekeeperView = ({
     });
   };
 
+  // Handle direct input changes
+  const handleMinutesChange = (e) => {
+    const value = parseInt(e.target.value) || 0;
+    setMinutes(Math.min(Math.max(value, 0), 60));
+  };
+
+  const handleSecondsChange = (e) => {
+    const value = parseInt(e.target.value) || 0;
+    setSeconds(Math.min(Math.max(value, 0), 59));
+  };
+
+  // Handle key presses for quick navigation
+  const handleKeyDown = (e, field) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (field === 'minutes') incrementMinutes();
+      else incrementSeconds();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (field === 'minutes') decrementMinutes();
+      else decrementSeconds();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleTimeSet();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleTimeCancel();
+    }
+  };
+
   // Get kicker name for team from props
   const getKickerName = (team) => {
     if (!assignedKickers || !assignedKickers[team] || !rosters) return null;
@@ -487,15 +517,26 @@ const ScorekeeperView = ({
                       <button 
                         onClick={incrementMinutes}
                         className="bg-gray-200 hover:bg-gray-300 p-1 rounded-t-md"
+                        disabled={!isConnected}
                       >
                         <ChevronUp size={16} />
                       </button>
-                      <div className="w-16 h-14 flex items-center justify-center text-4xl font-bold border rounded bg-white">
-                        {minutes.toString().padStart(2, '0')}
-                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        value={minutes}
+                        onChange={handleMinutesChange}
+                        onKeyDown={(e) => handleKeyDown(e, 'minutes')}
+                        onFocus={onInputFocusChange}
+                        onBlur={onInputFocusChange}
+                        className="w-16 h-14 text-4xl font-bold text-center border rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!isConnected}
+                      />
                       <button 
                         onClick={decrementMinutes}
                         className="bg-gray-200 hover:bg-gray-300 p-1 rounded-b-md"
+                        disabled={!isConnected}
                       >
                         <ChevronDown size={16} />
                       </button>
@@ -505,15 +546,26 @@ const ScorekeeperView = ({
                       <button 
                         onClick={incrementSeconds}
                         className="bg-gray-200 hover:bg-gray-300 p-1 rounded-t-md"
+                        disabled={!isConnected}
                       >
                         <ChevronUp size={16} />
                       </button>
-                      <div className="w-16 h-14 flex items-center justify-center text-4xl font-bold border rounded bg-white">
-                        {seconds.toString().padStart(2, '0')}
-                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={seconds}
+                        onChange={handleSecondsChange}
+                        onKeyDown={(e) => handleKeyDown(e, 'seconds')}
+                        onFocus={onInputFocusChange}
+                        onBlur={onInputFocusChange}
+                        className="w-16 h-14 text-4xl font-bold text-center border rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={!isConnected}
+                      />
                       <button 
                         onClick={decrementSeconds}
                         className="bg-gray-200 hover:bg-gray-300 p-1 rounded-b-md"
+                        disabled={!isConnected}
                       >
                         <ChevronDown size={16} />
                       </button>
@@ -521,8 +573,9 @@ const ScorekeeperView = ({
                   </div>
                 ) : (
                   <div 
-                    className="text-4xl font-bold mb-2 cursor-pointer"
+                    className="text-4xl font-bold mb-2 cursor-pointer hover:text-blue-600 transition-colors"
                     onClick={() => setIsEditingTime(true)}
+                    title="Click to edit time"
                   >
                     {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
                   </div>
@@ -555,6 +608,12 @@ const ScorekeeperView = ({
                   >
                     Reset to 15:00
                   </button>
+                </div>
+              )}
+
+              {isEditingTime && (
+                <div className="text-xs text-gray-500 text-center mb-2">
+                  Use arrow keys or type directly. Press Enter to save, Escape to cancel.
                 </div>
               )}
               

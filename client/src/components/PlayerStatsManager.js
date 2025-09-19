@@ -13,6 +13,14 @@ const PlayerStatsManager = ({
   const [selectedPlayer, setSelectedPlayer] = useState(null); // For detailed view
   const [viewMode, setViewMode] = useState('summary'); // 'summary' or 'plays'
 
+  // Helper function to check if player is offensive
+  const isOffensivePlayer = (position) => {
+    if (!position) return true; // Default to showing if position unknown
+    const pos = position.toLowerCase();
+    const defensivePositions = ['db', 'lb', 'dl', 'cb', 'fs', 'ss', 'olb', 'mlb', 'ilb', 'de', 'dt', 'nt'];
+    return !defensivePositions.some(defPos => pos.includes(defPos));
+  };
+
   // Initialize player structure from rosters
   useEffect(() => {
     const initPlays = {};
@@ -20,13 +28,16 @@ const PlayerStatsManager = ({
     ['home', 'away'].forEach(team => {
       if (rosters[team]) {
         rosters[team].forEach(player => {
-          initPlays[`${team}-${player.number}`] = {
-            name: player.name,
-            number: player.number,
-            position: player.position,
-            team: team,
-            plays: [] // All plays involving this player
-          };
+          // Only include offensive players
+          if (isOffensivePlayer(player.position)) {
+            initPlays[`${team}-${player.number}`] = {
+              name: player.name,
+              number: player.number,
+              position: player.position,
+              team: team,
+              plays: [] // All plays involving this player
+            };
+          }
         });
       }
     });
@@ -44,14 +55,17 @@ const PlayerStatsManager = ({
     ['home', 'away'].forEach(team => {
       if (rosters[team]) {
         rosters[team].forEach(player => {
-          const playerKey = `${team}-${player.number}`;
-          resetPlays[playerKey] = {
-            name: player.name,
-            number: player.number,
-            position: player.position,
-            team: team,
-            plays: []
-          };
+          // Only include offensive players
+          if (isOffensivePlayer(player.position)) {
+            const playerKey = `${team}-${player.number}`;
+            resetPlays[playerKey] = {
+              name: player.name,
+              number: player.number,
+              position: player.position,
+              team: team,
+              plays: []
+            };
+          }
         });
       }
     });
@@ -183,7 +197,9 @@ const PlayerStatsManager = ({
 
   const getTeamPlayers = (team) => {
     const teamKey = team === 'home' ? 'home' : 'away';
-    return Object.values(playerPlays).filter(player => player.team === teamKey);
+    return Object.values(playerPlays)
+      .filter(player => player.team === teamKey)
+      .sort((a, b) => b.plays.length - a.plays.length); // Sort by total plays descending
   };
 
   const calculatePlayerSummary = (player) => {
@@ -281,7 +297,7 @@ const PlayerStatsManager = ({
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <BarChart3 size={20} />
-          Player Statistics
+          Player Statistics (Offensive Only)
         </h3>
         
         {/* View Mode Toggle */}
@@ -320,7 +336,7 @@ const PlayerStatsManager = ({
       {/* Stats Display */}
       <div className="space-y-4 max-h-96 overflow-y-auto">
         {activeTeamPlayers.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">No players found for {activeTeamName}</p>
+          <p className="text-gray-500 text-center py-4">No offensive players found for {activeTeamName}</p>
         ) : (
           activeTeamPlayers.map(player => {
             const summary = calculatePlayerSummary(player);

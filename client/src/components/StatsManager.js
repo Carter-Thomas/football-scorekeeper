@@ -35,14 +35,17 @@ const StatsManager = ({
   // Enhanced Play-by-Play State
   const [playData, setPlayData] = useState({
     yardage: '',
-    playType: 'rush', // 'rush' or 'pass'
+    playType: 'rush', // 'rush', 'pass', 'kickoff', 'punt', 'turnover'
     isComplete: true,
     thrower: '', // player number for passes
     ballCarrier: '', // player number for rushes/receivers
     kickReceivingTeam: 'home', // for kickoffs/punts
     kickFieldSide: 'home', // which team's side of field
     kickYardLine: '', // yard line on that team's side
-    fieldDirection: 'home' // which direction is positive yardage
+    fieldDirection: 'home', // which direction is positive yardage
+    turnoverFieldSide: 'home', // which team's side of field for turnover
+    turnoverYardLine: '', // yard line on that team's side for turnover
+    turnoverType: 'fumble' // 'fumble', 'interception', 'downs'
   });
 
   // Assign kicker to team
@@ -159,6 +162,11 @@ const StatsManager = ({
     return playData.playType === 'kickoff' || playData.playType === 'punt';
   };
 
+  // Check if current play type is a turnover
+  const isTurnoverPlay = () => {
+    return playData.playType === 'turnover';
+  };
+
   // Get current possession team's roster
   const getCurrentRoster = () => {
     return rosters[possession] || [];
@@ -243,16 +251,69 @@ const StatsManager = ({
     };
   };
 
-  // Process enhanced play - UPDATED with kicker support
+  // Process enhanced play - UPDATED with turnover support
   const processPlay = () => {
     const startingPlay = isStartingPlay();
+    const turnoverPlay = isTurnoverPlay();
     
-    if (!startingPlay && !playData.yardage) return;
+    if (!startingPlay && !turnoverPlay && !playData.yardage) return;
     if (startingPlay && !playData.kickYardLine) return;
+    if (turnoverPlay && !playData.turnoverYardLine) return;
     
     let yards = 0;
     let isIncomplete = false;
     let playDescription = '';
+    
+    if (turnoverPlay) {
+      // Handle turnovers with field positioning
+      const turningOverTeam = possession === 'home' ? homeTeam : awayTeam;
+      const recoveringTeam = possession === 'home' ? awayTeam : homeTeam;
+      const recoveringPossession = possession === 'home' ? 'away' : 'home';
+      
+      // Calculate actual field position from team-specific input
+      const actualFieldPosition = playData.turnoverFieldSide === 'home' ? 
+        parseInt(playData.turnoverYardLine) : 
+        100 - parseInt(playData.turnoverYardLine);
+      
+      const fieldSideTeam = playData.turnoverFieldSide === 'home' ? homeTeam : awayTeam;
+      
+      // Create turnover description
+      const turnoverTypeText = playData.turnoverType === 'fumble' ? 'FUMBLE' : 
+                              playData.turnoverType === 'interception' ? 'INTERCEPTION' : 
+                              'TURNOVER ON DOWNS';
+      
+      playDescription = `${turnoverTypeText} recovered by ${recoveringTeam} at ${fieldSideTeam} ${playData.turnoverYardLine}`;
+      
+      // Update possession to recovering team and set field position
+      updateGameSituation({ 
+        possession: recoveringPossession,
+        down: 1,
+        distance: 10,
+        yardLine: actualFieldPosition
+      });
+      
+      // Add to play-by-play with the team that turned it over
+      if (typeof addCustomPlay === 'function') {
+        addCustomPlay(playDescription, turningOverTeam);
+      }
+      
+      // Reset form
+      setPlayData({ 
+        yardage: '', 
+        playType: 'rush', 
+        isComplete: true, 
+        thrower: '', 
+        ballCarrier: '', 
+        kickReceivingTeam: 'home', 
+        kickFieldSide: 'home',
+        kickYardLine: '',
+        fieldDirection: 'home',
+        turnoverFieldSide: 'home',
+        turnoverYardLine: '',
+        turnoverType: 'fumble'
+      });
+      return;
+    }
     
     if (startingPlay) {
       // Handle kickoffs and punts with team-specific field positioning
@@ -300,7 +361,10 @@ const StatsManager = ({
         kickReceivingTeam: 'home', 
         kickFieldSide: 'home',
         kickYardLine: '',
-        fieldDirection: 'home'
+        fieldDirection: 'home',
+        turnoverFieldSide: 'home',
+        turnoverYardLine: '',
+        turnoverType: 'fumble'
       });
       return;
     }
@@ -370,7 +434,10 @@ const StatsManager = ({
       kickReceivingTeam: 'home', 
       kickFieldSide: 'home',
       kickYardLine: '',
-      fieldDirection: 'home'
+      fieldDirection: 'home',
+      turnoverFieldSide: 'home',
+      turnoverYardLine: '',
+      turnoverType: 'fumble'
     });
   };
 
@@ -463,10 +530,11 @@ const StatsManager = ({
               <option value="pass">Pass</option>
               <option value="kickoff">Kickoff</option>
               <option value="punt">Punt</option>
+              <option value="turnover">Turnover</option>
             </select>
           </div>
           
-          {playData.playType === 'pass' && !isStartingPlay() && (
+          {playData.playType === 'pass' && !isStartingPlay() && !isTurnoverPlay() && (
             <div>
               <label className="block text-sm font-medium mb-1">Thrower # (QB)</label>
               <select
@@ -492,7 +560,7 @@ const StatsManager = ({
             </div>
           )}
           
-          {!isStartingPlay() && (
+          {!isStartingPlay() && !isTurnoverPlay() && (
             <div>
               <label className="block text-sm font-medium mb-1">
                 {playData.playType === 'pass' ? 'Receiver # (WR/RB/TE)' : 'Ball Carrier # (QB/RB/WR)'}
@@ -563,6 +631,55 @@ const StatsManager = ({
             </div>
           )}
           
+          {isTurnoverPlay() && (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">Turnover Type</label>
+                <select
+                  value={playData.turnoverType}
+                  onChange={(e) => setPlayData({...playData, turnoverType: e.target.value})}
+                  className="w-full p-2 border rounded disabled:bg-gray-100"
+                  disabled={!isConnected}
+                >
+                  <option value="fumble">Fumble</option>
+                  <option value="interception">Interception</option>
+                  <option value="downs">Turnover on Downs</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Recovery Field Side</label>
+                <select
+                  value={playData.turnoverFieldSide}
+                  onChange={(e) => setPlayData({...playData, turnoverFieldSide: e.target.value})}
+                  className="w-full p-2 border rounded disabled:bg-gray-100"
+                  disabled={!isConnected}
+                  title="Which team's side of the field is the recovery?"
+                >
+                  <option value="home">{homeTeam} side</option>
+                  <option value="away">{awayTeam} side</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {playData.turnoverFieldSide === 'home' ? homeTeam : awayTeam} Yard Line
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="49"
+                  value={playData.turnoverYardLine}
+                  onChange={(e) => setPlayData({...playData, turnoverYardLine: e.target.value})}
+                  className="w-full p-2 border rounded disabled:bg-gray-100"
+                  disabled={!isConnected}
+                  placeholder="e.g. 25"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Actual field position: {playData.turnoverFieldSide === 'home' ? playData.turnoverYardLine : playData.turnoverYardLine ? 100 - parseInt(playData.turnoverYardLine) : ''}
+                </div>
+              </div>
+            </>
+          )}
+          
           {isStartingPlay() ? (
             <>
               <div>
@@ -609,7 +726,7 @@ const StatsManager = ({
                 </div>
               </div>
             </>
-          ) : (
+          ) : !isTurnoverPlay() ? (
             <>
               <div>
                 <label className="block text-sm font-medium mb-1">Yardage (or "X" for incomplete)</label>
@@ -636,32 +753,17 @@ const StatsManager = ({
                 </select>
               </div>
             </>
-          )}
+          ) : null}
         </div>
         
         <div className="flex gap-2">
           <button
             onClick={processPlay}
-            disabled={!isConnected || (!playData.yardage && !isStartingPlay()) || (isStartingPlay() && !playData.kickYardLine)}
+            disabled={!isConnected || (!playData.yardage && !isStartingPlay() && !isTurnoverPlay()) || (isStartingPlay() && !playData.kickYardLine) || (isTurnoverPlay() && !playData.turnoverYardLine)}
             className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded flex items-center gap-2"
           >
             <Plus size={16} />
             Add Play
-          </button>
-          
-          <button
-            onClick={() => {
-              const newPossession = possession === 'home' ? 'away' : 'home';
-              updateGameSituation({ 
-                possession: newPossession,
-                down: 1,
-                distance: 10
-              });
-            }}
-            disabled={!isConnected}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded"
-          >
-            Switch Possession
           </button>
         </div>
       </div>

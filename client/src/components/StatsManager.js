@@ -153,8 +153,8 @@ const StatsManager = ({
   // Get player name by ID and team
   const getPlayerName = (team, playerId) => {
     if (!playerId) return '';
-    const player = rosters[team].find(p => p.id === playerId.toString());
-    return player ? player.name : `#${playerId}`;
+    const player = rosters[team].find(p => p.id.toString() === playerId.toString());
+    return player ? player.name : `Player #${playerId}`;
   };
 
   // Check if current play type is a starting play

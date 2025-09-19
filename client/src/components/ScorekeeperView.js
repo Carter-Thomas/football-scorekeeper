@@ -30,6 +30,7 @@ const ScorekeeperView = ({
   updateTeamName,
   addScore,
   useTimeout,
+  restoreTimeout,
   setIsClockRunning,
   updateGameSituation,
   nextDown,
@@ -187,6 +188,19 @@ const ScorekeeperView = ({
     const kickerName = getKickerName(team);
     const kickerText = kickerName ? `${kickerName} ` : '';
     addScore(team, 1, `Extra Point - ${kickerText}: ${teamName}`);
+  };
+
+  // Timeout handlers - now includes restore functionality
+  const handleUseTimeout = (team) => {
+    if (useTimeout) {
+      useTimeout(team);
+    }
+  };
+
+  const handleRestoreTimeout = (team) => {
+    if (restoreTimeout) {
+      restoreTimeout(team);
+    }
   };
 
   // Placeholder delete function
@@ -477,29 +491,51 @@ const ScorekeeperView = ({
               </div>
             </div>
 
-            {/* Timeouts */}
+            {/* Timeouts - Enhanced with restore functionality */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h3 className="text-lg font-semibold mb-4">Timeouts</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span>{awayTeam}: {timeouts.away}</span>
-                  <button 
-                    onClick={() => useTimeout('away')}
-                    disabled={timeouts.away === 0 || !isConnected}
-                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Use Timeout
-                  </button>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => handleUseTimeout('away')}
+                      disabled={timeouts.away === 0 || !isConnected}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-2 py-1 rounded text-xs"
+                      title="Use timeout"
+                    >
+                      Use
+                    </button>
+                    <button 
+                      onClick={() => handleRestoreTimeout('away')}
+                      disabled={timeouts.away >= 3 || !isConnected}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-2 py-1 rounded text-xs"
+                      title="Restore timeout"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>{homeTeam}: {timeouts.home}</span>
-                  <button 
-                    onClick={() => useTimeout('home')}
-                    disabled={timeouts.home === 0 || !isConnected}
-                    className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm"
-                  >
-                    Use Timeout
-                  </button>
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => handleUseTimeout('home')}
+                      disabled={timeouts.home === 0 || !isConnected}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-2 py-1 rounded text-xs"
+                      title="Use timeout"
+                    >
+                      Use
+                    </button>
+                    <button 
+                      onClick={() => handleRestoreTimeout('home')}
+                      disabled={timeouts.home >= 3 || !isConnected}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-2 py-1 rounded text-xs"
+                      title="Restore timeout"
+                    >
+                      <Plus size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

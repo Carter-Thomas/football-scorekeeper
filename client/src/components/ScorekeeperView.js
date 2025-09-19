@@ -201,11 +201,10 @@ const ScorekeeperView = ({
     // Update game situation directly to restore timeout
     const currentTimeouts = timeouts[team];
     if (currentTimeouts < 3) {
+      // Use individual timeout fields instead of nested object
+      const timeoutField = team === 'home' ? 'home_timeouts' : 'away_timeouts';
       updateGameSituation({
-        timeouts: {
-          ...timeouts,
-          [team]: currentTimeouts + 1
-        }
+        [timeoutField]: currentTimeouts + 1
       });
     }
     

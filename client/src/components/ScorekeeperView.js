@@ -198,6 +198,18 @@ const ScorekeeperView = ({
   };
 
   const handleRestoreTimeout = (team) => {
+    // Update game situation directly to restore timeout
+    const currentTimeouts = timeouts[team];
+    if (currentTimeouts < 3) {
+      updateGameSituation({
+        timeouts: {
+          ...timeouts,
+          [team]: currentTimeouts + 1
+        }
+      });
+    }
+    
+    // Also call the restoreTimeout prop if it exists (for any additional logic)
     if (restoreTimeout) {
       restoreTimeout(team);
     }

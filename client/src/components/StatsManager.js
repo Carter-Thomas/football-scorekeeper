@@ -460,8 +460,11 @@ const StatsManager = ({
     const yardLineAdjustment = isOffensePenalty ? -penaltyYards : penaltyYards;
     const newYardLine = Math.max(1, Math.min(99, yardLine + yardLineAdjustment));
 
-    // Distance increases by penalty yards (e.g., 2nd & 7 becomes 2nd & 12 for 5-yard penalty)
-    const newDistance = distance + penaltyYards;
+    // Offense penalty: distance increases (e.g., 2nd & 7 becomes 2nd & 12 for 5-yard penalty)
+    // Defense penalty: distance decreases (e.g., 2nd & 20 becomes 2nd & 15 for 5-yard penalty)
+    const newDistance = isOffensePenalty
+      ? distance + penaltyYards
+      : Math.max(1, distance - penaltyYards);
 
     // Update game situation - same down, increased distance, adjusted yard line
     updateGameSituation({
@@ -472,7 +475,7 @@ const StatsManager = ({
     });
 
     // Add to play-by-play
-    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards - Now ${getOrdinalSuffix(down)} & ${newDistance}`;
+    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards`;
     if (typeof addCustomPlay === 'function') {
       addCustomPlay(playDescription, currentTeam);
     }
@@ -843,7 +846,7 @@ const StatsManager = ({
           <div className="space-y-3">
             <h4 className="font-medium text-yellow-700 text-center">Defense Penalties</h4>
             <div className="text-xs text-gray-500 text-center mb-2">
-              (Moves yard line forward, increases distance)
+              (Moves yard line forward, decreases distance)
             </div>
             <div className="flex flex-col gap-2">
               <button

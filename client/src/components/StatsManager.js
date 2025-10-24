@@ -450,6 +450,41 @@ const StatsManager = ({
     }
   };
 
+  // Handle penalty - adjusts yard line and distance
+  const handlePenalty = (penaltyYards, isOffensePenalty) => {
+    const currentTeam = possession === 'home' ? homeTeam : awayTeam;
+    const penaltyType = isOffensePenalty ? 'Offense' : 'Defense';
+
+    // Offense penalty = move yard line BACK (toward their own goal)
+    // Defense penalty = move yard line FORWARD (toward opponent's goal)
+    const yardLineAdjustment = isOffensePenalty ? -penaltyYards : penaltyYards;
+    const newYardLine = Math.max(1, Math.min(99, yardLine + yardLineAdjustment));
+
+    // Distance increases by penalty yards (e.g., 2nd & 7 becomes 2nd & 12 for 5-yard penalty)
+    const newDistance = distance + penaltyYards;
+
+    // Update game situation - same down, increased distance, adjusted yard line
+    updateGameSituation({
+      down: down,
+      distance: newDistance,
+      yardLine: newYardLine,
+      possession: possession
+    });
+
+    // Add to play-by-play
+    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards - Now ${getOrdinalSuffix(down)} & ${newDistance}`;
+    if (typeof addCustomPlay === 'function') {
+      addCustomPlay(playDescription, currentTeam);
+    }
+  };
+
+  // Helper function to get ordinal suffix (1st, 2nd, 3rd, 4th)
+  const getOrdinalSuffix = (num) => {
+    const suffixes = ['th', 'st', 'nd', 'rd'];
+    const value = num % 100;
+    return num + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
+  };
+
   return (
     <div className="space-y-6">
       {/* Roster Management Section */}
@@ -765,6 +800,82 @@ const StatsManager = ({
             <Plus size={16} />
             Add Play
           </button>
+        </div>
+      </div>
+
+      {/* Penalty Section */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-lg font-semibold mb-4">Penalties</h3>
+
+        <div className="grid grid-cols-2 gap-6">
+          {/* Offense Penalties */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-red-700 text-center">Offense Penalties</h4>
+            <div className="text-xs text-gray-500 text-center mb-2">
+              (Moves yard line back, increases distance)
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handlePenalty(5, true)}
+                disabled={!isConnected}
+                className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Offense 5 Yards
+              </button>
+              <button
+                onClick={() => handlePenalty(10, true)}
+                disabled={!isConnected}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Offense 10 Yards
+              </button>
+              <button
+                onClick={() => handlePenalty(15, true)}
+                disabled={!isConnected}
+                className="bg-red-700 hover:bg-red-800 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Offense 15 Yards
+              </button>
+            </div>
+          </div>
+
+          {/* Defense Penalties */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-yellow-700 text-center">Defense Penalties</h4>
+            <div className="text-xs text-gray-500 text-center mb-2">
+              (Moves yard line forward, increases distance)
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handlePenalty(5, false)}
+                disabled={!isConnected}
+                className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Defense 5 Yards
+              </button>
+              <button
+                onClick={() => handlePenalty(10, false)}
+                disabled={!isConnected}
+                className="bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Defense 10 Yards
+              </button>
+              <button
+                onClick={() => handlePenalty(15, false)}
+                disabled={!isConnected}
+                className="bg-yellow-700 hover:bg-yellow-800 disabled:bg-gray-400 text-white px-4 py-2 rounded font-medium"
+              >
+                Defense 15 Yards
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Current Game Situation Display */}
+        <div className="mt-4 p-3 bg-gray-50 rounded text-center">
+          <div className="text-sm text-gray-600">
+            Current Situation: <span className="font-semibold">{getOrdinalSuffix(down)} & {distance}</span> at Yard Line <span className="font-semibold">{yardLine}</span>
+          </div>
         </div>
       </div>
 

@@ -472,7 +472,7 @@ const StatsManager = ({
     });
 
     // Add to play-by-play
-    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards - Now ${down}${getOrdinalSuffix(down)} & ${newDistance}`;
+    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards - Now ${getOrdinalSuffix(down)} & ${newDistance}`;
     if (typeof addCustomPlay === 'function') {
       addCustomPlay(playDescription, currentTeam);
     }
@@ -874,7 +874,7 @@ const StatsManager = ({
         {/* Current Game Situation Display */}
         <div className="mt-4 p-3 bg-gray-50 rounded text-center">
           <div className="text-sm text-gray-600">
-            Current Situation: <span className="font-semibold">{down}{getOrdinalSuffix(down)} & {distance}</span> at Yard Line <span className="font-semibold">{yardLine}</span>
+            Current Situation: <span className="font-semibold">{getOrdinalSuffix(down)} & {distance}</span> at Yard Line <span className="font-semibold">{yardLine}</span>
           </div>
         </div>
       </div>

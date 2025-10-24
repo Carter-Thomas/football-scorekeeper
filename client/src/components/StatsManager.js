@@ -475,7 +475,7 @@ const StatsManager = ({
     });
 
     // Add to play-by-play
-    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards - Now ${getOrdinalSuffix(down)} & ${newDistance}`;
+    const playDescription = `PENALTY: ${penaltyType} ${penaltyYards} yards`;
     if (typeof addCustomPlay === 'function') {
       addCustomPlay(playDescription, currentTeam);
     }
